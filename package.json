@@ -5,18 +5,40 @@
   "type": "module",
   "main": "src/index.ts",
   "scripts": {
-    "dev": "bun run --hot src/index.ts",
-    "start": "bun run src/index.ts",
     "build": "bun build src/index.ts --outdir dist --target bun",
+    "dev": "bun run --hot src/index.ts",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
+    "lint": "eslint .",
+    "prepare": "husky",
+    "start": "bun run src/index.ts",
     "test": "bun test",
+    "test:watch": "bun test --watch",
     "typecheck": "tsc --noEmit"
   },
-  "keywords": ["bun", "hono", "typescript", "rest-api", "aws"],
+  "keywords": [
+    "bun",
+    "hono",
+    "typescript",
+    "rest-api",
+    "aws"
+  ],
   "author": "",
   "license": "MIT",
   "devDependencies": {
+    "@commitlint/config-conventional": "^19.8.1",
+    "@eslint/js": "^9.33.0",
     "@types/bun": "^1.0.0",
-    "typescript": "^5.9.2"
+    "commitlint": "^19.8.1",
+    "eslint": "^9.33.0",
+    "eslint-config-prettier": "^10.1.8",
+    "globals": "^16.3.0",
+    "husky": "^9.1.7",
+    "jiti": "^2.4.2",
+    "lint-staged": "^16.1.5",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.2",
+    "typescript-eslint": "^8.40.0"
   },
   "dependencies": {
     "hono": "^4.0.0",
