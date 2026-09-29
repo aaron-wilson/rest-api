@@ -4,11 +4,11 @@ import { createTripSchema } from "./domain/trip";
 import type { parseEnv } from "./config/env";
 import { createLogger } from "./logger";
 import { createTripService } from "./service/trips";
-import { createMemoryStore } from "./store/memory";
+import { selectStore } from "./store/select";
 import { InvalidCursor, StoreConflict, type TripStore } from "./store/port";
 
 export type Config = ReturnType<typeof parseEnv>;
-export function createApp(config: Config, store: TripStore = createMemoryStore()) {
+export function createApp(config: Config, store: TripStore = selectStore(config)) {
   const trips = createTripService({ store });
   const app = new Hono();
   const log = createLogger(config.logLevel);

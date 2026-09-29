@@ -16,7 +16,9 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "test:integration": "vitest run tests/foundation.test.ts",
-    "seed": "bun run scripts/seed.ts"
+    "seed": "bun run scripts/seed.ts",
+    "dynamo:init": "bun run scripts/init-dynamo.ts",
+    "test:dynamo": "RUN_DYNAMO_CONTRACT=1 vitest run tests/dynamo-contract.test.ts"
   },
   "keywords": [
     "bun",
@@ -47,6 +49,8 @@
     "vitest": "^5.0.2"
   },
   "dependencies": {
+    "@aws-sdk/client-dynamodb": "^3.1142.0",
+    "@aws-sdk/lib-dynamodb": "^3.1142.0",
     "hono": "^4.0.0",
     "zod": "^3.22.0"
   }
