@@ -18,7 +18,7 @@ export const shareLinkSchema = z.object({
   token: z.string().min(32),
   createdAt: z.string().datetime(),
 });
-export const tripSchema = z.object({
+const tripObjectSchema = z.object({
   id: z.string().uuid(),
   ownerId: z.string().trim().min(1),
   city: z.string().trim().min(1).max(100),
@@ -29,8 +29,27 @@ export const tripSchema = z.object({
   updatedAt: z.string().datetime(),
   version: z.number().int().positive(),
 });
-export const createTripSchema = tripSchema.pick({ city: true, preferences: true, days: true });
-export const updateTripSchema = createTripSchema.partial();
+const uniqueEntities = (days: z.infer<typeof daySchema>[]) => {
+  const dayIds = new Set<string>();
+  const activityIds = new Set<string>();
+  for (const day of days) {
+    if (dayIds.has(day.id)) return false;
+    dayIds.add(day.id);
+    for (const activity of day.activities) {
+      if (activityIds.has(activity.id)) return false;
+      activityIds.add(activity.id);
+    }
+  }
+  return true;
+};
+const uniqueDays = { message: "Duplicate day or activity ID" };
+export const tripSchema = tripObjectSchema.refine((trip) => uniqueEntities(trip.days), uniqueDays);
+export const createTripSchema = tripObjectSchema
+  .pick({ city: true, preferences: true, days: true })
+  .refine((trip) => uniqueEntities(trip.days), uniqueDays);
+export const updateTripSchema = tripObjectSchema
+  .pick({ city: true, preferences: true, days: true })
+  .partial();
 export type Trip = z.infer<typeof tripSchema>;
 export type CreateTrip = z.infer<typeof createTripSchema>;
 

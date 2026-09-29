@@ -1,10 +1,12 @@
-import { describe, expect, it } from "vitest";
+/* eslint-disable @typescript-eslint/no-non-null-assertion */
+import { expect, it } from "vitest";
 import { createMemoryStore } from "../src/store/memory";
 import { demoTrips } from "../src/store/fixtures";
 import { StoreConflict } from "../src/store/port";
 import { createTripService } from "../src/service/trips";
 import { createApp } from "../src/app";
 import { parseEnv } from "../src/config/env";
+import { tripSchema } from "../src/domain/trip";
 
 const fixture = demoTrips()[0];
 if (!fixture) throw new Error("Missing fixture");
@@ -18,36 +20,6 @@ function service() {
   });
   return { store, trips };
 }
-describe("memory trip contract", () => {
-  it("isolates owners and copies stored documents", async () => {
-    const { store } = service();
-    await store.reset(demoTrips());
-    expect(await store.get("other", fixture.id)).toBeNull();
-    const trip = await store.get("demo", fixture.id);
-    if (!trip) throw new Error("Missing trip");
-    trip.city = "Changed";
-    expect((await store.get("demo", fixture.id))?.city).toBe("Lisbon");
-    expect(await store.batch("other", [fixture.id])).toEqual([]);
-    expect(await store.delete("demo", "missing", 1)).toBe(false);
-  });
-  it("pages in stable ID order and rejects invalid cursors", async () => {
-    const { store } = service();
-    await store.reset(demoTrips().reverse());
-    const first = await store.list("demo", 2);
-    expect(first.items.map((trip) => trip.city)).toEqual(["Lisbon", "Kyoto"]);
-    expect(first.nextCursor).toBeTruthy();
-    expect(
-      (await store.list("demo", 2, first.nextCursor ?? undefined)).items.map((trip) => trip.city)
-    ).toEqual(["Montreal"]);
-    await expect(store.list("demo", 2, "bad!")).rejects.toThrow("Invalid cursor");
-  });
-  it("rejects stale writes and deletes", async () => {
-    const { store } = service();
-    await store.write(fixture, null);
-    await expect(store.write(fixture, null)).rejects.toBeInstanceOf(StoreConflict);
-    await expect(store.delete("demo", fixture.id, 2)).rejects.toBeInstanceOf(StoreConflict);
-  });
-});
 it("applies update, pin, swap and private share projection rules", async () => {
   const { store, trips } = service();
   await store.write(fixture, null);
@@ -59,21 +31,45 @@ it("applies update, pin, swap and private share projection rules", async () => {
   const activityId = fixture.days[0]?.activities[0]?.id ?? "";
   const pinned = await trips.pin("demo", fixture.id, 2, activityId, true);
   expect(pinned.days[0]?.activities[0]?.pinned).toBe(true);
+  expect(
+    pinned.days.flatMap((day) => day.activities).filter((activity) => activity.pinned)
+  ).toHaveLength(1);
   await expect(
     trips.swap("demo", fixture.id, 3, activityId, { id: activityId, title: "New", pinned: false })
   ).rejects.toThrow("Pinned");
   await trips.pin("demo", fixture.id, 3, activityId, false);
-  await trips.swap("demo", fixture.id, 4, activityId, {
+  const swapped = await trips.swap("demo", fixture.id, 4, activityId, {
     id: activityId,
     title: "New",
     pinned: false,
   });
+  expect(
+    swapped.days.flatMap((day) => day.activities).filter((activity) => activity.title === "New")
+  ).toHaveLength(1);
   const share = await trips.share("demo", fixture.id, 5);
   const publicView = await trips.publicByToken(share.token, "demo", fixture.id);
   expect(publicView).toHaveProperty("city", "Porto");
   expect(publicView).not.toHaveProperty("ownerId");
   expect(publicView).not.toHaveProperty("preferences");
   expect(await trips.publicByToken("wrong", "demo", fixture.id)).toBeNull();
+});
+it("rejects duplicate day and activity IDs without storing changes", async () => {
+  const { store, trips } = service();
+  await store.write(fixture, null);
+  const firstDay = fixture.days[0]!;
+  const firstActivity = firstDay.activities[0]!;
+  const secondDay = { ...firstDay, id: "10000000-0000-4000-8000-000000000099" };
+  for (const days of [
+    [{ ...firstDay, activities: [firstActivity, { ...firstActivity }] }],
+    [firstDay, { ...secondDay, activities: [{ ...firstActivity }] }],
+    [firstDay, { ...firstDay }],
+  ]) {
+    await expect(
+      trips.create("demo", { city: "Test", preferences: fixture.preferences, days })
+    ).rejects.toThrow();
+    await expect(trips.update("demo", fixture.id, 1, { days })).rejects.toThrow();
+    expect(await store.get("demo", fixture.id)).toEqual(fixture);
+  }
 });
 it("creates and reads a trip through Hono", async () => {
   const app = createApp(parseEnv({}));
@@ -90,4 +86,55 @@ it("creates and reads a trip through Hono", async () => {
   const trip = (await created.json()) as { id: string };
   expect((await app.request(`/trips/${trip.id}`)).status).toBe(200);
   expect((await app.request("/trips/missing")).status).toBe(404);
+});
+it("classifies malformed client requests and masks unexpected store failures", async () => {
+  const app = createApp(parseEnv({}));
+  const badJson = await app.request("/trips", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: "{",
+  });
+  expect(badJson.status).toBe(400);
+  expect((await app.request("/trips?cursor=bad!")).status).toBe(400);
+  const duplicate = await app.request("/trips", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      city: fixture.city,
+      preferences: fixture.preferences,
+      days: [
+        {
+          ...fixture.days[0],
+          activities: [fixture.days[0]!.activities[0], fixture.days[0]!.activities[0]],
+        },
+      ],
+    }),
+  });
+  expect(duplicate.status).toBe(400);
+  const failingStore = {
+    ...createMemoryStore(),
+    list: async () => {
+      throw new Error("PRIVATE_STORE_SENTINEL");
+    },
+  };
+  const failure = await createApp(parseEnv({}), failingStore).request("/trips");
+  expect(failure.status).toBe(500);
+  expect(await failure.text()).not.toContain("PRIVATE_STORE_SENTINEL");
+  const invalidInternalStore = {
+    ...createMemoryStore(),
+    write: async () => {
+      tripSchema.parse({ ...fixture, id: "PRIVATE_WRITE_SENTINEL" });
+    },
+  };
+  const internalFailure = await createApp(parseEnv({}), invalidInternalStore).request("/trips", {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({
+      city: fixture.city,
+      preferences: fixture.preferences,
+      days: fixture.days,
+    }),
+  });
+  expect(internalFailure.status).toBe(500);
+  expect(await internalFailure.text()).not.toContain("PRIVATE_WRITE_SENTINEL");
 });

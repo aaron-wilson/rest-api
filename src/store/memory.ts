@@ -1,12 +1,14 @@
 import type { Trip } from "../domain/trip";
-import { StoreConflict, type TripStore } from "./port";
+import { InvalidCursor, StoreConflict, type TripStore } from "./port";
+
+const compareIds = (a: string, b: string) => (a < b ? -1 : a > b ? 1 : 0);
 
 function cursorFor(id: string) {
   return Buffer.from(id).toString("base64url");
 }
 function parseCursor(cursor: string) {
   const id = Buffer.from(cursor, "base64url").toString();
-  if (!id || cursorFor(id) !== cursor) throw new Error("Invalid cursor");
+  if (!id || cursorFor(id) !== cursor) throw new InvalidCursor("Invalid cursor");
   return id;
 }
 export function createMemoryStore(): TripStore {
@@ -20,8 +22,8 @@ export function createMemoryStore(): TripStore {
       if (!Number.isInteger(limit) || limit < 1 || limit > 100) throw new Error("Invalid limit");
       const after = cursor ? parseCursor(cursor) : "";
       const matching = [...records.values()]
-        .filter((trip) => trip.ownerId === ownerId && trip.id > after)
-        .sort((a, b) => a.id.localeCompare(b.id));
+        .filter((trip) => trip.ownerId === ownerId && compareIds(trip.id, after) > 0)
+        .sort((a, b) => compareIds(a.id, b.id));
       const items = matching.slice(0, limit);
       const last = items.at(-1);
       return {
@@ -46,9 +48,9 @@ export function createMemoryStore(): TripStore {
       return records.delete(key(ownerId, id));
     },
     async batch(ownerId, ids) {
-      return ids
-        .map((id) => records.get(key(ownerId, id)))
-        .filter((trip): trip is Trip => Boolean(trip));
+      return structuredClone(
+        ids.map((id) => records.get(key(ownerId, id))).filter((trip): trip is Trip => Boolean(trip))
+      );
     },
     async reset(trips = []) {
       records.clear();

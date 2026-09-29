@@ -1,11 +1,11 @@
 import { Hono } from "hono";
 import { cors } from "hono/cors";
-import { ZodError } from "zod";
+import { createTripSchema } from "./domain/trip";
 import type { parseEnv } from "./config/env";
 import { createLogger } from "./logger";
 import { createTripService } from "./service/trips";
 import { createMemoryStore } from "./store/memory";
-import { StoreConflict, type TripStore } from "./store/port";
+import { InvalidCursor, StoreConflict, type TripStore } from "./store/port";
 
 export type Config = ReturnType<typeof parseEnv>;
 export function createApp(config: Config, store: TripStore = createMemoryStore()) {
@@ -14,12 +14,23 @@ export function createApp(config: Config, store: TripStore = createMemoryStore()
   const log = createLogger(config.logLevel);
   app.use("*", cors({ origin: config.corsOrigin }));
   app.onError((error, c) => {
-    if (error instanceof ZodError) return c.json({ error: "Invalid request" }, 400);
+    if (error instanceof InvalidCursor) return c.json({ error: "Invalid cursor" }, 400);
     if (error instanceof StoreConflict) return c.json({ error: "Version conflict" }, 409);
     log("error", "request_error", { name: error.name });
     return c.json({ error: "Internal server error" }, 500);
   });
-  app.post("/trips", async (c) => c.json(await trips.create("demo", await c.req.json()), 201));
+  app.post("/trips", async (c) => {
+    let body: unknown;
+    try {
+      body = await c.req.json();
+    } catch (error) {
+      if (error instanceof SyntaxError) return c.json({ error: "Invalid JSON" }, 400);
+      throw error;
+    }
+    const parsed = createTripSchema.safeParse(body);
+    if (!parsed.success) return c.json({ error: "Invalid request" }, 400);
+    return c.json(await trips.create("demo", parsed.data), 201);
+  });
   app.get("/trips/:id", async (c) => {
     const trip = await trips.get("demo", c.req.param("id"));
     return trip ? c.json(trip) : c.json({ error: "Trip not found" }, 404);

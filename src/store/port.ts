@@ -1,5 +1,6 @@
 import type { Trip } from "../domain/trip";
 export class StoreConflict extends Error {}
+export class InvalidCursor extends Error {}
 export interface TripStore {
   get(ownerId: string, id: string): Promise<Trip | null>;
   list(
