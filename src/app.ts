@@ -1,4 +1,3 @@
-import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import { Hono, type Context } from "hono";
@@ -39,8 +38,35 @@ const MAX_BODY_BYTES = 65536;
 async function body<T extends z.ZodTypeAny>(c: Context, schema: T): Promise<z.infer<T>> {
   const declared = Number(c.req.header("content-length") ?? "0");
   if (declared > MAX_BODY_BYTES) throw new BadRequest("Request too large");
-  const text = await c.req.text();
-  if (Buffer.byteLength(text) > MAX_BODY_BYTES) throw new BadRequest("Request too large");
+  const reader = c.req.raw.body?.getReader();
+  const chunks: Uint8Array[] = [];
+  let size = 0;
+  if (reader) {
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        size += value.byteLength;
+        if (size > MAX_BODY_BYTES) throw new BadRequest("Request too large");
+        chunks.push(value);
+      }
+    } finally {
+      try {
+        if (size > MAX_BODY_BYTES) await reader.cancel();
+      } catch {
+        // The size error determines the response even if cancellation fails.
+      } finally {
+        reader.releaseLock();
+      }
+    }
+  }
+  const bytes = new Uint8Array(size);
+  let offset = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, offset);
+    offset += chunk.byteLength;
+  }
+  const text = new TextDecoder().decode(bytes);
   let input: unknown;
   try {
     input = JSON.parse(text);
@@ -64,7 +90,12 @@ function versionedEditError(error: unknown): never {
 export function createApp(
   config: Config,
   store: TripStore = selectStore(config),
-  auth: AuthPort = selectAuth(config)
+  auth: AuthPort = selectAuth(config),
+  clientKey: (c: Context) => string = (c) =>
+    (
+      c.env as { server?: { requestIP(request: Request): { address: string } | null } } | undefined
+    )?.server?.requestIP(c.req.raw)?.address ?? "unknown",
+  maxRateKeys = 10000
 ) {
   if (config.appMode === "live" && auth === demoAuth)
     throw new Error("Demo auth is unavailable in live mode");
@@ -72,6 +103,26 @@ export function createApp(
   const app = new Hono();
   const log = createLogger(config.logLevel);
   const limits = new Map<string, { start: number; count: number }>();
+  const owners = new WeakMap<Request, string>();
+  const addressKey = (c: Context) => `address:${clientKey(c)}`;
+  const check = (key: string, now: number) => {
+    const current = limits.get(key);
+    if (current && now - current.start < 60_000 && current.count >= config.rateLimitPerMinute)
+      throw new TooManyRequests("Rate limit exceeded");
+  };
+  const charge = (key: string, now: number) => {
+    const current = limits.get(key);
+    if (current && now - current.start < 60_000) {
+      check(key, now);
+      current.count++;
+      return;
+    }
+    if (limits.size >= maxRateKeys)
+      for (const [entry, state] of limits) if (now - state.start >= 60_000) limits.delete(entry);
+    // A full map rejects new callers without resetting active windows.
+    if (limits.size >= maxRateKeys) throw new TooManyRequests("Rate limit exceeded");
+    limits.set(key, { start: now, count: 1 });
+  };
   app.use(
     "*",
     cors({
@@ -85,19 +136,19 @@ export function createApp(
     c.header("Referrer-Policy", "no-referrer");
     c.header("Cache-Control", "no-store");
     if (c.req.path !== "/health") {
-      const key = createHash("sha256")
-        .update(c.req.header("authorization") ?? "anonymous")
-        .digest("hex");
       const now = Date.now();
-      const current = limits.get(key);
-      if (current && now - current.start < 60_000) {
-        if (current.count >= config.rateLimitPerMinute)
-          throw new TooManyRequests("Rate limit exceeded");
-        current.count++;
-      } else limits.set(key, { start: now, count: 1 });
-      if (limits.size > 10000)
-        for (const [entry, state] of limits) if (now - state.start >= 60_000) limits.delete(entry);
-      if (limits.size > 10000) limits.delete(limits.keys().next().value ?? "");
+      if (c.req.path === "/trips" || c.req.path.startsWith("/trips/")) {
+        const key = addressKey(c);
+        check(key, now);
+        try {
+          const principal = await auth.authenticate(c.req.header("authorization"));
+          charge(`principal:${principal.id}`, now);
+          owners.set(c.req.raw, principal.id);
+        } catch (error) {
+          if (error instanceof Unauthorized) charge(key, now);
+          throw error;
+        }
+      } else charge(addressKey(c), now);
     }
     await next();
   });
@@ -116,7 +167,11 @@ export function createApp(
     log("error", "request_error", { name: error.name });
     return c.json({ error: "Internal server error" }, 500);
   });
-  const owner = async (c: Context) => (await auth.authenticate(c.req.header("authorization"))).id;
+  const owner = async (c: Context) => {
+    const principal = owners.get(c.req.raw);
+    if (!principal) throw new Unauthorized();
+    return principal;
+  };
   const load = async (ownerId: string, tripId: string) => {
     const trip = await trips.get(ownerId, tripId);
     if (!trip) throw new TripNotFound("Trip not found");

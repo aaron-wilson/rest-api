@@ -1,4 +1,4 @@
-import { afterEach, expect, it } from "vitest";
+import { afterEach, expect, it, vi } from "vitest";
 import request from "supertest";
 import { serve } from "@hono/node-server";
 import type { Server } from "node:http";
@@ -146,6 +146,131 @@ it("isolates owners, rejects expired shares, and enforces body and rate limits",
   const second = await limited.request("/trips", { headers: { authorization: token } });
   expect(first.status).toBe(200);
   expect(second.status).toBe(429);
+});
+
+it("limits public and failed private calls by address before verification", async () => {
+  const authenticate = vi.fn(async (header?: string) => {
+    if (header === token || header === "Bearer alias") return { id: "demo" };
+    throw new (await import("../src/auth/port")).Unauthorized();
+  });
+  const app = createApp(
+    parseEnv({ RATE_LIMIT_PER_MINUTE: "2" }),
+    createMemoryStore(),
+    { authenticate },
+    (c) => c.req.header("x-test-client") ?? "unknown"
+  );
+  const path = `/shared/demo/${fixture.id}/missing`;
+  for (let i = 0; i < 2; i++)
+    expect(
+      (await app.request(path, { headers: { authorization: `rotated${i}`, "x-test-client": "a" } }))
+        .status
+    ).toBe(404);
+  expect(
+    (await app.request(path, { headers: { authorization: "rotated2", "x-test-client": "a" } }))
+      .status
+  ).toBe(429);
+  expect((await app.request(path, { headers: { "x-test-client": "b" } })).status).toBe(404);
+  for (let i = 0; i < 2; i++)
+    expect(
+      (await app.request("/trips", { headers: { authorization: `bad${i}`, "x-test-client": "c" } }))
+        .status
+    ).toBe(401);
+  expect(
+    (await app.request("/trips", { headers: { authorization: "bad2", "x-test-client": "c" } }))
+      .status
+  ).toBe(429);
+  expect(authenticate).toHaveBeenCalledTimes(2);
+  expect(
+    (await app.request("/trips", { headers: { authorization: token, "x-test-client": "d" } }))
+      .status
+  ).toBe(200);
+  expect(
+    (
+      await app.request("/trips", {
+        headers: { authorization: "Bearer alias", "x-test-client": "e" },
+      })
+    ).status
+  ).toBe(200);
+  expect(
+    (await app.request("/trips", { headers: { authorization: token, "x-test-client": "f" } }))
+      .status
+  ).toBe(429);
+});
+
+it("uses the Bun request address and preserves active buckets when full", async () => {
+  const app = createApp(
+    parseEnv({ RATE_LIMIT_PER_MINUTE: "2" }),
+    createMemoryStore(),
+    undefined,
+    undefined,
+    2
+  );
+  const fetchAt = (address: string) =>
+    app.fetch(new Request("http://localhost/hello"), {
+      server: { requestIP: () => ({ address }) },
+    });
+  expect((await fetchAt("a")).status).toBe(200);
+  expect((await fetchAt("b")).status).toBe(200);
+  expect((await fetchAt("c")).status).toBe(429);
+  expect((await fetchAt("a")).status).toBe(200);
+  expect((await fetchAt("a")).status).toBe(429);
+});
+
+it("stops an undeclared body at the byte cap and cancels its source", async () => {
+  let cancelled = false;
+  let pulls = 0;
+  const stream = new ReadableStream<Uint8Array>({
+    pull(controller) {
+      pulls++;
+      controller.enqueue(new Uint8Array(32768));
+    },
+    cancel() {
+      cancelled = true;
+    },
+  });
+  const store = createMemoryStore();
+  const app = createApp(parseEnv({}), store);
+  const send = (value: BodyInit) =>
+    app.fetch(
+      new Request("http://localhost/trips", {
+        method: "POST",
+        headers: { authorization: token },
+        body: value,
+        duplex: "half",
+      })
+    );
+  expect((await send(stream)).status).toBe(400);
+  expect(cancelled).toBe(true);
+  expect(pulls).toBeLessThan(16);
+  expect((await store.list("demo", 10)).items).toEqual([]);
+  expect(
+    (
+      await send(
+        new ReadableStream({
+          start(controller) {
+            controller.enqueue(
+              new TextEncoder().encode(JSON.stringify({ city: "é".repeat(32768) }))
+            );
+            controller.close();
+          },
+        })
+      )
+    ).status
+  ).toBe(400);
+  const exact = '{"ids":[]}' + " ".repeat(65536 - '{"ids":[]}'.length);
+  expect(
+    (
+      await app.fetch(
+        new Request("http://localhost/trips/batch", {
+          method: "POST",
+          headers: { authorization: token },
+          body: exact,
+        })
+      )
+    ).status
+  ).toBe(200);
+  expect((await send("x".repeat(65536))).status).toBe(400);
+  expect((await send("{")).status).toBe(400);
 });
 
 it("edits days and activities with versioned HTTP operations", async () => {
