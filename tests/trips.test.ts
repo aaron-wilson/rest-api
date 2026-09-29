@@ -10,6 +10,7 @@ import { tripSchema } from "../src/domain/trip";
 
 const fixture = demoTrips()[0];
 if (!fixture) throw new Error("Missing fixture");
+const authHeaders = { authorization: "Bearer demo" };
 function service() {
   const store = createMemoryStore();
   const trips = createTripService({
@@ -75,7 +76,7 @@ it("creates and reads a trip through Hono", async () => {
   const app = createApp(parseEnv({}));
   const created = await app.request("/trips", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders },
     body: JSON.stringify({
       city: fixture.city,
       days: fixture.days,
@@ -84,21 +85,24 @@ it("creates and reads a trip through Hono", async () => {
   });
   expect(created.status).toBe(201);
   const trip = (await created.json()) as { id: string };
-  expect((await app.request(`/trips/${trip.id}`)).status).toBe(200);
-  expect((await app.request("/trips/missing")).status).toBe(404);
+  expect((await app.request(`/trips/${trip.id}`, { headers: authHeaders })).status).toBe(200);
+  expect(
+    (await app.request("/trips/30000000-0000-4000-8000-000000000099", { headers: authHeaders }))
+      .status
+  ).toBe(404);
 });
 it("classifies malformed client requests and masks unexpected store failures", async () => {
   const app = createApp(parseEnv({}));
   const badJson = await app.request("/trips", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders },
     body: "{",
   });
   expect(badJson.status).toBe(400);
-  expect((await app.request("/trips?cursor=bad!")).status).toBe(400);
+  expect((await app.request("/trips?cursor=bad!", { headers: authHeaders })).status).toBe(400);
   const duplicate = await app.request("/trips", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders },
     body: JSON.stringify({
       city: fixture.city,
       preferences: fixture.preferences,
@@ -117,7 +121,9 @@ it("classifies malformed client requests and masks unexpected store failures", a
       throw new Error("PRIVATE_STORE_SENTINEL");
     },
   };
-  const failure = await createApp(parseEnv({}), failingStore).request("/trips");
+  const failure = await createApp(parseEnv({}), failingStore).request("/trips", {
+    headers: authHeaders,
+  });
   expect(failure.status).toBe(500);
   expect(await failure.text()).not.toContain("PRIVATE_STORE_SENTINEL");
   const invalidInternalStore = {
@@ -128,7 +134,7 @@ it("classifies malformed client requests and masks unexpected store failures", a
   };
   const internalFailure = await createApp(parseEnv({}), invalidInternalStore).request("/trips", {
     method: "POST",
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...authHeaders },
     body: JSON.stringify({
       city: fixture.city,
       preferences: fixture.preferences,

@@ -17,7 +17,10 @@ export const preferencesSchema = z.object({
 export const shareLinkSchema = z.object({
   token: z.string().min(32),
   createdAt: z.string().datetime(),
+  expiresAt: z.string().datetime(),
 });
+export class ActivityNotFound extends Error {}
+export class InvalidTripEdit extends Error {}
 const tripObjectSchema = z.object({
   id: z.string().uuid(),
   ownerId: z.string().trim().min(1),
@@ -82,7 +85,7 @@ export function pinActivity(trip: Trip, activityId: string, pinned: boolean, now
       return { ...activity, pinned };
     }),
   }));
-  if (!found) throw new Error("Activity not found");
+  if (!found) throw new ActivityNotFound("Activity not found");
   return updateTrip(trip, { days }, now);
 }
 export function swapActivity(
@@ -98,18 +101,18 @@ export function swapActivity(
       )
     )
   )
-    throw new Error("Duplicate activity ID");
+    throw new InvalidTripEdit("Duplicate activity ID");
   let found = false;
   const days = trip.days.map((day) => ({
     ...day,
     activities: day.activities.map((activity) => {
       if (activity.id !== activityId) return activity;
-      if (activity.pinned) throw new Error("Pinned activity cannot be swapped");
+      if (activity.pinned) throw new InvalidTripEdit("Pinned activity cannot be swapped");
       found = true;
       return replacement;
     }),
   }));
-  if (!found) throw new Error("Activity not found");
+  if (!found) throw new ActivityNotFound("Activity not found");
   return updateTrip(trip, { days }, now);
 }
 export function publicTrip(trip: Trip) {

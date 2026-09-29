@@ -18,7 +18,8 @@
     "test:integration": "vitest run tests/foundation.test.ts",
     "seed": "bun run scripts/seed.ts",
     "dynamo:init": "bun run scripts/init-dynamo.ts",
-    "test:dynamo": "RUN_DYNAMO_CONTRACT=1 vitest run tests/dynamo-contract.test.ts"
+    "test:dynamo": "RUN_DYNAMO_CONTRACT=1 vitest run tests/dynamo-contract.test.ts",
+    "spec:snapshot": "bun run scripts/openapi-snapshot.ts"
   },
   "keywords": [
     "bun",
@@ -51,7 +52,10 @@
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1142.0",
     "@aws-sdk/lib-dynamodb": "^3.1142.0",
+    "aws-jwt-verify": "^5.2.1",
     "hono": "^4.0.0",
-    "zod": "^3.22.0"
+    "swagger-ui-dist": "^5.33.0",
+    "zod": "^3.22.0",
+    "zod-to-json-schema": "^3.25.2"
   }
 }

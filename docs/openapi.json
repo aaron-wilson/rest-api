@@ -1,0 +1,2587 @@
+{
+  "openapi": "3.0.3",
+  "info": { "title": "Wander REST API", "version": "1.0.0" },
+  "servers": [{ "url": "/" }],
+  "components": {
+    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } }
+  },
+  "paths": {
+    "/trips": {
+      "get": {
+        "summary": "List owned trips",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "ownerId": { "type": "string", "minLength": 1 },
+                          "city": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "preferences": {
+                            "type": "object",
+                            "properties": {
+                              "interests": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "maxItems": 20
+                              },
+                              "pace": {
+                                "type": "string",
+                                "enum": ["relaxed", "balanced", "busy"]
+                              }
+                            },
+                            "required": ["interests", "pace"],
+                            "additionalProperties": false
+                          },
+                          "days": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "date": { "type": "string", "format": "date" },
+                                "activities": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "pinned": { "type": "boolean" }
+                                    },
+                                    "required": ["id", "title", "pinned"],
+                                    "additionalProperties": false
+                                  },
+                                  "maxItems": 20
+                                }
+                              },
+                              "required": ["id", "date", "activities"],
+                              "additionalProperties": false
+                            },
+                            "minItems": 1,
+                            "maxItems": 30
+                          },
+                          "share": {
+                            "type": "object",
+                            "properties": {
+                              "token": { "type": "string", "minLength": 32 },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": ["token", "createdAt", "expiresAt"],
+                            "additionalProperties": false,
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": true,
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "ownerId",
+                          "city",
+                          "preferences",
+                          "days",
+                          "share",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "nextCursor": { "type": "string", "nullable": true }
+                  },
+                  "required": ["items", "nextCursor"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          { "name": "cursor", "in": "query", "schema": { "type": "string" } },
+          {
+            "name": "limit",
+            "in": "query",
+            "schema": { "type": "integer", "minimum": 1, "maximum": 100 }
+          }
+        ]
+      },
+      "post": {
+        "summary": "Create trip",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "city": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "preferences": {
+                    "type": "object",
+                    "properties": {
+                      "interests": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "maxItems": 20
+                      },
+                      "pace": {
+                        "type": "string",
+                        "enum": ["relaxed", "balanced", "busy"]
+                      }
+                    },
+                    "required": ["interests", "pace"],
+                    "additionalProperties": false
+                  },
+                  "days": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "id": { "type": "string", "format": "uuid" },
+                        "date": { "type": "string", "format": "date" },
+                        "activities": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": { "type": "string", "format": "uuid" },
+                              "title": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 120
+                              },
+                              "pinned": { "type": "boolean" }
+                            },
+                            "required": ["id", "title", "pinned"],
+                            "additionalProperties": false
+                          },
+                          "maxItems": 20
+                        }
+                      },
+                      "required": ["id", "date", "activities"],
+                      "additionalProperties": false
+                    },
+                    "minItems": 1,
+                    "maxItems": 30
+                  }
+                },
+                "required": ["city", "preferences", "days"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/trips/batch": {
+      "post": {
+        "summary": "Batch read owned trips",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "ids": {
+                    "type": "array",
+                    "items": { "type": "string", "format": "uuid" },
+                    "maxItems": 100
+                  }
+                },
+                "required": ["ids"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "ownerId": { "type": "string", "minLength": 1 },
+                          "city": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 100
+                          },
+                          "preferences": {
+                            "type": "object",
+                            "properties": {
+                              "interests": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 80
+                                },
+                                "maxItems": 20
+                              },
+                              "pace": {
+                                "type": "string",
+                                "enum": ["relaxed", "balanced", "busy"]
+                              }
+                            },
+                            "required": ["interests", "pace"],
+                            "additionalProperties": false
+                          },
+                          "days": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "date": { "type": "string", "format": "date" },
+                                "activities": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string",
+                                        "format": "uuid"
+                                      },
+                                      "title": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 120
+                                      },
+                                      "pinned": { "type": "boolean" }
+                                    },
+                                    "required": ["id", "title", "pinned"],
+                                    "additionalProperties": false
+                                  },
+                                  "maxItems": 20
+                                }
+                              },
+                              "required": ["id", "date", "activities"],
+                              "additionalProperties": false
+                            },
+                            "minItems": 1,
+                            "maxItems": 30
+                          },
+                          "share": {
+                            "type": "object",
+                            "properties": {
+                              "token": { "type": "string", "minLength": 32 },
+                              "createdAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              },
+                              "expiresAt": {
+                                "type": "string",
+                                "format": "date-time"
+                              }
+                            },
+                            "required": ["token", "createdAt", "expiresAt"],
+                            "additionalProperties": false,
+                            "nullable": true
+                          },
+                          "createdAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "updatedAt": {
+                            "type": "string",
+                            "format": "date-time"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "exclusiveMinimum": true,
+                            "minimum": 0
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "ownerId",
+                          "city",
+                          "preferences",
+                          "days",
+                          "share",
+                          "createdAt",
+                          "updatedAt",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": ["items"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        }
+      }
+    },
+    "/trips/{id}": {
+      "get": {
+        "summary": "Read owned trip",
+        "security": [{ "bearerAuth": [] }],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      },
+      "patch": {
+        "summary": "Update trip",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "changes": {
+                    "type": "object",
+                    "properties": {
+                      "city": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 100
+                      },
+                      "preferences": {
+                        "type": "object",
+                        "properties": {
+                          "interests": {
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 80
+                            },
+                            "maxItems": 20
+                          },
+                          "pace": {
+                            "type": "string",
+                            "enum": ["relaxed", "balanced", "busy"]
+                          }
+                        },
+                        "required": ["interests", "pace"],
+                        "additionalProperties": false
+                      },
+                      "days": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": { "type": "string", "format": "uuid" },
+                            "date": { "type": "string", "format": "date" },
+                            "activities": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "id": { "type": "string", "format": "uuid" },
+                                  "title": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 120
+                                  },
+                                  "pinned": { "type": "boolean" }
+                                },
+                                "required": ["id", "title", "pinned"],
+                                "additionalProperties": false
+                              },
+                              "maxItems": 20
+                            }
+                          },
+                          "required": ["id", "date", "activities"],
+                          "additionalProperties": false
+                        },
+                        "minItems": 1,
+                        "maxItems": 30
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "changes"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete trip",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": { "description": "Deleted" },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/pin": {
+      "post": {
+        "summary": "Pin activity",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "activityId": { "type": "string", "format": "uuid" },
+                  "pinned": { "type": "boolean" }
+                },
+                "required": ["version", "activityId", "pinned"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/swap": {
+      "post": {
+        "summary": "Swap activity",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "activityId": { "type": "string", "format": "uuid" },
+                  "replacement": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "pinned": { "type": "boolean" }
+                    },
+                    "required": ["id", "title", "pinned"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "activityId", "replacement"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/preferences": {
+      "put": {
+        "summary": "Update preferences",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "preferences": {
+                    "type": "object",
+                    "properties": {
+                      "interests": {
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 80
+                        },
+                        "maxItems": 20
+                      },
+                      "pace": {
+                        "type": "string",
+                        "enum": ["relaxed", "balanced", "busy"]
+                      }
+                    },
+                    "required": ["interests", "pace"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "preferences"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/days": {
+      "post": {
+        "summary": "Add day",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "day": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "date": { "type": "string", "format": "date" },
+                      "activities": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": { "type": "string", "format": "uuid" },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "pinned": { "type": "boolean" }
+                          },
+                          "required": ["id", "title", "pinned"],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 20
+                      }
+                    },
+                    "required": ["id", "date", "activities"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "day"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/days/{dayId}": {
+      "patch": {
+        "summary": "Update day",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "changes": {
+                    "type": "object",
+                    "properties": {
+                      "date": { "type": "string", "format": "date" },
+                      "activities": {
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "id": { "type": "string", "format": "uuid" },
+                            "title": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 120
+                            },
+                            "pinned": { "type": "boolean" }
+                          },
+                          "required": ["id", "title", "pinned"],
+                          "additionalProperties": false
+                        },
+                        "maxItems": 20
+                      }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "changes"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "dayId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete day",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "dayId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/days/{dayId}/activities": {
+      "post": {
+        "summary": "Add activity",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "activity": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "string", "format": "uuid" },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "pinned": { "type": "boolean" }
+                    },
+                    "required": ["id", "title", "pinned"],
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "activity"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "dayId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/activities/{activityId}": {
+      "patch": {
+        "summary": "Update activity",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  },
+                  "changes": {
+                    "type": "object",
+                    "properties": {
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 120
+                      },
+                      "pinned": { "type": "boolean" }
+                    },
+                    "additionalProperties": false
+                  }
+                },
+                "required": ["version", "changes"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "activityId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Delete activity",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "activityId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/trips/{id}/share": {
+      "post": {
+        "summary": "Create share link",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "token": { "type": "string" },
+                    "createdAt": { "type": "string" },
+                    "expiresAt": { "type": "string" }
+                  },
+                  "required": ["token", "createdAt", "expiresAt"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      },
+      "delete": {
+        "summary": "Revoke share link",
+        "security": [{ "bearerAuth": [] }],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "version": {
+                    "type": "integer",
+                    "exclusiveMinimum": true,
+                    "minimum": 0
+                  }
+                },
+                "required": ["version"],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "ownerId": { "type": "string", "minLength": 1 },
+                    "city": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 100
+                    },
+                    "preferences": {
+                      "type": "object",
+                      "properties": {
+                        "interests": {
+                          "type": "array",
+                          "items": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 80
+                          },
+                          "maxItems": 20
+                        },
+                        "pace": {
+                          "type": "string",
+                          "enum": ["relaxed", "balanced", "busy"]
+                        }
+                      },
+                      "required": ["interests", "pace"],
+                      "additionalProperties": false
+                    },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      },
+                      "minItems": 1,
+                      "maxItems": 30
+                    },
+                    "share": {
+                      "type": "object",
+                      "properties": {
+                        "token": { "type": "string", "minLength": 32 },
+                        "createdAt": {
+                          "type": "string",
+                          "format": "date-time"
+                        },
+                        "expiresAt": { "type": "string", "format": "date-time" }
+                      },
+                      "required": ["token", "createdAt", "expiresAt"],
+                      "additionalProperties": false,
+                      "nullable": true
+                    },
+                    "createdAt": { "type": "string", "format": "date-time" },
+                    "updatedAt": { "type": "string", "format": "date-time" },
+                    "version": {
+                      "type": "integer",
+                      "exclusiveMinimum": true,
+                      "minimum": 0
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "ownerId",
+                    "city",
+                    "preferences",
+                    "days",
+                    "share",
+                    "createdAt",
+                    "updatedAt",
+                    "version"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          }
+        ]
+      }
+    },
+    "/shared/{ownerId}/{tripId}/{token}": {
+      "get": {
+        "summary": "Read public share",
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "Success",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "string", "format": "uuid" },
+                    "city": { "type": "string" },
+                    "days": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": { "type": "string", "format": "uuid" },
+                          "date": { "type": "string", "format": "date" },
+                          "activities": {
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "id": { "type": "string", "format": "uuid" },
+                                "title": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 120
+                                },
+                                "pinned": { "type": "boolean" }
+                              },
+                              "required": ["id", "title", "pinned"],
+                              "additionalProperties": false
+                            },
+                            "maxItems": 20
+                          }
+                        },
+                        "required": ["id", "date", "activities"],
+                        "additionalProperties": false
+                      }
+                    },
+                    "updatedAt": { "type": "string", "format": "date-time" }
+                  },
+                  "required": ["id", "city", "days", "updatedAt"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": { "description": "Invalid request" },
+          "401": { "description": "Unauthorized" },
+          "404": { "description": "Not found" },
+          "409": { "description": "Version conflict" },
+          "429": { "description": "Rate limit exceeded" }
+        },
+        "parameters": [
+          {
+            "name": "ownerId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          },
+          {
+            "name": "tripId",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string", "format": "uuid" }
+          },
+          {
+            "name": "token",
+            "in": "path",
+            "required": true,
+            "schema": { "type": "string" }
+          }
+        ]
+      }
+    }
+  }
+}

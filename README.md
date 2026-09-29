@@ -1,5 +1,12 @@
 # rest-api
 
+> **Current implementation:** The local API supports versioned trip, day, activity, preferences,
+> batch, and share routes. Start with `APP_MODE=demo` and send `Authorization: Bearer demo` to
+> private routes. `GET /openapi.json` and `GET /docs` serve the generated contract and local
+> Swagger UI. Memory storage is the default; DynamoDB Local is optional. Live Cognito verification
+> requires `APP_MODE=live` plus `COGNITO_USER_POOL_ID` and `COGNITO_CLIENT_ID`. Cloud deployment,
+> CI activation, and observability integrations described below remain future work.
+
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Build Status](https://github.com/aaron-wilson/rest-api/actions/workflows/ci.yml/badge.svg)](https://github.com/aaron-wilson/rest-api/actions)
 
@@ -9,17 +16,17 @@
 
 ## Table of Contents
 
-* [Overview](#overview)
-* [Tech Stack](#tech-stack)
-* [Getting Started](#getting-started)
-* [Configuration](#configuration)
-* [Database](#database)
-* [Authentication & Security](#authentication--security)
-* [Testing](#testing)
-* [CI/CD](#cicd)
-* [Observability](#observability)
-* [Contributing](#contributing)
-* [License](#license)
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [Database](#database)
+- [Authentication & Security](#authentication--security)
+- [Testing](#testing)
+- [CI/CD](#cicd)
+- [Observability](#observability)
+- [Contributing](#contributing)
+- [License](#license)
 
 ---
 
@@ -29,14 +36,14 @@ This repository implements a REST API using **Bun** as the runtime and **Hono** 
 
 Key features:
 
-* Fully typed REST routes with Hono and Zod validation
-* OpenAPI spec generation for documentation and client SDKs
-* Scalable AWS DynamoDB data layer with TypeScript DTOs
-* Cognito JWT authentication middleware
-* Built-in rate limiting, CORS, and input validation
-* Unit and integration testing with Vitest and Supertest
-* CI/CD pipeline deploying Docker images to ECS Fargate via GitHub Actions and AWS CDK
-* Observability using OpenTelemetry and New Relic
+- Fully typed REST routes with Hono and Zod validation
+- OpenAPI spec generation for documentation and client SDKs
+- Scalable AWS DynamoDB data layer with TypeScript DTOs
+- Cognito JWT authentication middleware
+- Built-in rate limiting, CORS, and input validation
+- Unit and integration testing with Vitest and Supertest
+- CI/CD pipeline deploying Docker images to ECS Fargate via GitHub Actions and AWS CDK
+- Observability using OpenTelemetry and New Relic
 
 ---
 
@@ -62,10 +69,10 @@ Key features:
 
 ### Prerequisites
 
-* [Bun](https://bun.sh) installed
-* [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate credentials
-* Node.js (for local compatibility testing)
-* Docker (for containerized development/testing)
+- [Bun](https://bun.sh) installed
+- [AWS CLI](https://aws.amazon.com/cli/) configured with appropriate credentials
+- Node.js (for local compatibility testing)
+- Docker (for containerized development/testing)
 
 ### Local Development
 
@@ -81,9 +88,9 @@ bun install
 bun run dev
 ```
 
-* API playground available at `http://localhost:3000`
-* Hot-reloads on code changes
-* Environment variables auto-loaded from `.env`
+- API playground available at `http://localhost:3000`
+- Hot-reloads on code changes
+- Environment variables auto-loaded from `.env`
 
 ---
 
@@ -105,9 +112,9 @@ TypeScript DTOs ensure runtime safety and predictable structure.
 
 ## Database
 
-* **AWS DynamoDB** with **DocumentClient** for flexible, schema-less storage.
-* TypeScript DTOs enforce type-safe requests/responses.
-* Supports atomic updates, conditional writes, and high scalability.
+- **AWS DynamoDB** with **DocumentClient** for flexible, schema-less storage.
+- TypeScript DTOs enforce type-safe requests/responses.
+- Supports atomic updates, conditional writes, and high scalability.
 
 ```ts
 import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
@@ -117,9 +124,9 @@ import { DynamoDBClient, GetItemCommand } from "@aws-sdk/client-dynamodb";
 
 ## Authentication & Security
 
-* **Cognito JWT verification middleware** secures endpoints.
-* **Rate limiting** and **CORS** protect API from abuse.
-* **Zod validation** ensures correct input/output data.
+- **Cognito JWT verification middleware** secures endpoints.
+- **Rate limiting** and **CORS** protect API from abuse.
+- **Zod validation** ensures correct input/output data.
 
 ```ts
 app.use(jwtMiddleware({ userPoolId: process.env.COGNITO_USER_POOL_ID }));
@@ -129,8 +136,8 @@ app.use(jwtMiddleware({ userPoolId: process.env.COGNITO_USER_POOL_ID }));
 
 ## Testing
 
-* **Unit Tests**: Vitest ensures isolated function-level validation.
-* **Integration Tests**: Supertest verifies REST API endpoints.
+- **Unit Tests**: Vitest ensures isolated function-level validation.
+- **Integration Tests**: Supertest verifies REST API endpoints.
 
 ```bash
 # Run all unit tests
@@ -141,9 +148,9 @@ bun run vitest
 
 ## CI/CD
 
-* **GitHub Actions** automates build, test, and Docker image creation.
-* Deploys to **AWS ECS Fargate** behind an **ALB**.
-* **AWS CDK** manages infrastructure: clusters, services, task definitions, and log groups.
+- **GitHub Actions** automates build, test, and Docker image creation.
+- Deploys to **AWS ECS Fargate** behind an **ALB**.
+- **AWS CDK** manages infrastructure: clusters, services, task definitions, and log groups.
 
 ```yaml
 # Example CI step
@@ -162,8 +169,8 @@ jobs:
 
 ## Observability
 
-* **OpenTelemetry** collects logs, metrics, and traces.
-* **New Relic** dashboards monitor API performance, errors, and latency.
+- **OpenTelemetry** collects logs, metrics, and traces.
+- **New Relic** dashboards monitor API performance, errors, and latency.
 
 ---
 
