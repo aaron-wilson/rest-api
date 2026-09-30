@@ -20,7 +20,10 @@
     "seed:once": "bun run scripts/seed-once.ts",
     "dynamo:init": "bun run scripts/init-dynamo.ts",
     "test:dynamo": "RUN_DYNAMO_CONTRACT=1 vitest run tests/dynamo-contract.test.ts",
-    "spec:snapshot": "bun run scripts/openapi-snapshot.ts"
+    "spec:snapshot": "bun run scripts/openapi-snapshot.ts",
+    "infra:synth": "TSX_TSCONFIG_PATH=infra/tsconfig.json node --import ../graph-rest-react-stack/platform-cdk/node_modules/tsx/dist/loader.mjs infra/app.ts",
+    "infra:typecheck": "../graph-rest-react-stack/platform-cdk/node_modules/.bin/tsc --project infra/tsconfig.json",
+    "infra:test": "../graph-rest-react-stack/platform-cdk/node_modules/.bin/vitest run --config infra/vitest.config.ts"
   },
   "keywords": [
     "bun",
