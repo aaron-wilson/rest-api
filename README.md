@@ -1,37 +1,100 @@
-# Wander REST API
+# rest-api
 
-The Bun/Hono domain service owns trips, days, activities, preferences and share links. Zod validates HTTP boundaries and generates the committed OpenAPI contract. Memory and DynamoDB DocumentClient adapters share ownership, pagination and conditional-version semantics; GraphQL accesses these records through REST rather than owning a second database adapter.
+> TypeScript-first REST service with Bun, Hono, Zod, OpenAPI, and DynamoDB.
 
-## Local use
+---
 
-Use Bun 1.2.21 and the committed Bun lockfile. Install dependencies explicitly with `bun install --frozen-lockfile` before using checks. With installed dependencies:
+## Table of Contents
+
+- [Overview](#overview)
+- [Tech Stack](#tech-stack)
+- [Getting Started](#getting-started)
+- [Configuration](#configuration)
+- [Database](#database)
+- [Authentication & Security](#authentication--security)
+- [Testing](#testing)
+- [CI/CD](#cicd)
+- [Observability](#observability)
+
+---
+
+## Overview
+
+The REST layer owns trip rules and persistence: trips, days, activities, preferences, and share links. It demonstrates validated HTTP boundaries, interchangeable stores, and conditional writes.
+
+- Hono routes with Zod validation and generated OpenAPI
+- Memory defaults and an optional DynamoDB DocumentClient adapter
+- Ownership checks, version conflicts, public projections and Cognito auth
+
+---
+
+## Tech Stack
+
+| Layer                     | Technology                                | Role                                       |
+| ------------------------- | ----------------------------------------- | ------------------------------------------ |
+| Language                  | TypeScript 5.9.2                          | Typed domain and HTTP contracts            |
+| Runtime / package manager | Bun 1.2.21                                | Execution, bundling and locked installs    |
+| Framework                 | Hono 4.9.6                                | Routes and middleware                      |
+| Validation / docs         | Zod 3.25.76 · Swagger UI 5.33             | Runtime schemas and generated OpenAPI      |
+| Persistence               | DynamoDB SDK 3.1142 · DocumentClient      | Ownership, paging and conditional versions |
+| Authentication            | Cognito · aws-jwt-verify 5.2.1            | Verify live access tokens                  |
+| Testing                   | Vitest 5.0.2 · Supertest 7.3              | Store contracts and real HTTP integration  |
+| Deployment                | Docker · CDK · ECS Fargate · internal ALB | Private domain service                     |
+| Observability             | OpenTelemetry API 1.9 / SDK 0.203         | Traces, metrics and correlated logs        |
+
+---
+
+## Getting Started
+
+Use Bun 1.2.21; Node 24 is the tooling baseline.
 
 ```sh
-bun --no-env-file run dev
+bun install --frozen-lockfile
+bun run dev
 ```
 
-Defaults are port 3000, demo identity and memory persistence. Private routes require `Authorization: Bearer demo`; public shared projections omit ownership data. `GET /health`, `/openapi.json` and `/docs` are local endpoints; Swagger assets are served locally. Memory resets on restart. `PROVIDER_STORE=dynamo` requires `DYNAMO_TABLE`; a local `DYNAMO_ENDPOINT` selects DynamoDB Local without a cloud account. Table initialization and destructive demo seeding are separate explicit commands.
+Health: http://localhost:3000/health. Swagger UI: `/docs`; contract: `/openapi.json`. Private demo requests use `Authorization: Bearer demo`. Docker is optional for source development; the [hub](https://github.com/aaron-wilson/graph-rest-react-stack) runs the full container alternative.
 
-`.env.example` documents runtime settings, and `infra/.env.example` documents deploy-time inputs. `APP_MODE=live` requires matching Cognito pool/client configuration and accepts verified access tokens only. Invalid live configuration fails startup; demo auth is not a fallback. `CORS_ORIGIN` is a single allowed origin and `RATE_LIMIT_PER_MINUTE` bounds requests.
+---
 
-For the full container demo, use Compose in the [sibling hub](../graph-rest-react-stack/README.md). Compose runs all three applications instead of the source dev commands; stop the source servers first to free ports 3000, 4000 and 3001. The UI’s built host preview is also local and needs both APIs running.
+## Configuration
 
-## Checks and implementation status
+[.env.example](.env.example) documents actual names: `PROVIDER_STORE`, `DYNAMO_TABLE`, `DYNAMO_ENDPOINT`, `CORS_ORIGIN` and `RATE_LIMIT_PER_MINUTE`. Bun loads local env files. Defaults require no credentials; Cognito settings are required only for `APP_MODE=live`. Deployment inputs live in [infra/.env.example](infra/.env.example).
 
-From a sibling workspace with the hub's platform toolchain installed:
+---
+
+## Database
+
+Memory resets on restart. `PROVIDER_STORE=dynamo` selects DynamoDB and requires `DYNAMO_TABLE`; a local `DYNAMO_ENDPOINT` selects the emulator. Both adapters enforce ownership and optimistic concurrency. `dynamo:init` creates the local table; `seed:once` explicitly resets local data.
+
+---
+
+## Authentication & Security
+
+Cognito verifies access tokens in live mode; demo identity is explicit. Private routes enforce ownership, Zod validation, rate limits and a single allowed CORS origin. Public shares omit private ownership data.
+
+---
+
+## Testing
 
 ```sh
-node ../graph-rest-react-stack/scripts/verify-repo.mjs rest-api
+bun run typecheck
+bun run lint
+bun --no-env-file --bun run test
+bun run build
+bun run spec:snapshot
 ```
 
-The entrypoint runs direct Prettier/ESLint/types, Bun-driven Vitest unit/contracts/bound-server integration, OpenAPI drift, the Bun build, CDK assertions and credential-free synth. DynamoDB Local's separate opt-in contract requires its emulator:
+`test:dynamo` needs initialized DynamoDB Local and its explicit endpoint/table settings. Infrastructure scripts use the sibling hub's installed platform toolchain.
 
-```sh
-PROVIDER_STORE=dynamo DYNAMO_TABLE=wander-local DYNAMO_ENDPOINT=http://127.0.0.1:8000 RUN_DYNAMO_CONTRACT=1 bun --no-env-file --bun node_modules/.bin/vitest run tests/dynamo-contract.test.ts
-```
+---
 
-OpenTelemetry traces, metrics and correlated structured logs are implemented; `TELEMETRY_MODE=off` exports nothing by default. OTLP collector/New Relic routing is optional. `infra/` defines private ECS Fargate, scoped task roles, deploy-time SSM references, DynamoDB access and alarms; offline template assertions do not prove an AWS deployment. Docker/Compose and DynamoDB Local acceptance need Docker. Real Cognito, cloud DynamoDB, AWS deployment and external telemetry exports remain live-unverified. All workflow definitions remain disabled templates; there is no active CI badge or automatic deployment.
+## CI/CD
 
-The sibling hub's learning index and verification record describe the assembled journey and evidence. This API does not call planning vendors or host the frontend.
+Disabled GitHub Actions templates cover checks and manual deployment. `infra/` defines private Fargate tasks, DynamoDB IAM, health checks and a CPU alarm; shared resources live in the hub's CDK app. Templates and offline synth are implemented; Docker/live AWS acceptance remains pending.
 
-See the [learning index](../graph-rest-react-stack/docs/README.md), [verification record](../graph-rest-react-stack/docs/verification.md), and [deployment runbook](../graph-rest-react-stack/docs/patterns/deployment-runbook.md) for the shared toolchain and AWS environment flow. AWS hosting uses live Cognito auth even when planning providers are mock; `pnpm dev` means local source development.
+---
+
+## Observability
+
+OpenTelemetry exports are off by default. Set `TELEMETRY_MODE=otlp` and `OTEL_EXPORTER_OTLP_ENDPOINT` for traces, metrics and redacted logs. Optional New Relic forwarding is handled by the hub collector.
