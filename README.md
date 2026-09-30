@@ -7,12 +7,14 @@ The Bun/Hono domain service owns trips, days, activities, preferences and share 
 Use Bun 1.2.21 and the committed Bun lockfile. Install dependencies explicitly with `bun install --frozen-lockfile` before using checks. With installed dependencies:
 
 ```sh
-bun --no-env-file src/bootstrap.ts
+bun --no-env-file run dev
 ```
 
 Defaults are port 3000, demo identity and memory persistence. Private routes require `Authorization: Bearer demo`; public shared projections omit ownership data. `GET /health`, `/openapi.json` and `/docs` are local endpoints; Swagger assets are served locally. Memory resets on restart. `PROVIDER_STORE=dynamo` requires `DYNAMO_TABLE`; a local `DYNAMO_ENDPOINT` selects DynamoDB Local without a cloud account. Table initialization and destructive demo seeding are separate explicit commands.
 
 `.env.example` documents runtime settings, and `infra/.env.example` documents deploy-time inputs. `APP_MODE=live` requires matching Cognito pool/client configuration and accepts verified access tokens only. Invalid live configuration fails startup; demo auth is not a fallback. `CORS_ORIGIN` is a single allowed origin and `RATE_LIMIT_PER_MINUTE` bounds requests.
+
+For the full container demo, use Compose in the [sibling hub](../graph-rest-react-stack/README.md). Compose runs all three applications instead of the source dev commands; stop the source servers first to free ports 3000, 4000 and 3001. The UI’s built host preview is also local and needs both APIs running.
 
 ## Checks and implementation status
 
@@ -31,3 +33,5 @@ PROVIDER_STORE=dynamo DYNAMO_TABLE=wander-local DYNAMO_ENDPOINT=http://127.0.0.1
 OpenTelemetry traces, metrics and correlated structured logs are implemented; `TELEMETRY_MODE=off` exports nothing by default. OTLP collector/New Relic routing is optional. `infra/` defines private ECS Fargate, scoped task roles, deploy-time SSM references, DynamoDB access and alarms; offline template assertions do not prove an AWS deployment. Docker/Compose and DynamoDB Local acceptance need Docker. Real Cognito, cloud DynamoDB, AWS deployment and external telemetry exports remain live-unverified. All workflow definitions remain disabled templates; there is no active CI badge or automatic deployment.
 
 The sibling hub's learning index and verification record describe the assembled journey and evidence. This API does not call planning vendors or host the frontend.
+
+See the [learning index](../graph-rest-react-stack/docs/README.md), [verification record](../graph-rest-react-stack/docs/verification.md), and [deployment runbook](../graph-rest-react-stack/docs/patterns/deployment-runbook.md) for the shared toolchain and AWS environment flow. AWS hosting uses live Cognito auth even when planning providers are mock; `pnpm dev` means local source development.
