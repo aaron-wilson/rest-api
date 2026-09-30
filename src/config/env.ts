@@ -43,7 +43,10 @@ export function parseEnv(input: Record<string, string | undefined>) {
     throw new Error("Invalid configuration: DYNAMO_TABLE");
   if (result.data.DYNAMO_ENDPOINT) {
     const endpoint = new URL(result.data.DYNAMO_ENDPOINT);
-    if (endpoint.protocol !== "http:" || !["localhost", "127.0.0.1"].includes(endpoint.hostname))
+    if (
+      endpoint.protocol !== "http:" ||
+      !["localhost", "127.0.0.1", "dynamodb"].includes(endpoint.hostname)
+    )
       throw new Error("Invalid configuration: DYNAMO_ENDPOINT");
   }
   if (
