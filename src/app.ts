@@ -7,7 +7,7 @@ import type { parseEnv } from "./config/env";
 import { ActivityNotFound, InvalidTripEdit, tripSchema } from "./domain/trip";
 import { createLogger } from "./logger";
 import { context } from "@opentelemetry/api";
-import { incomingContext, observed } from "./otel/operations";
+import { incomingContext, observed, recordFailure } from "./otel/operations";
 import { createTripService, TripNotFound } from "./service/trips";
 import { selectStore } from "./store/select";
 import { InvalidCursor, StoreConflict, type TripStore } from "./store/port";
@@ -171,6 +171,7 @@ export function createApp(
     if (error instanceof StoreConflict) return c.json({ error: "Version conflict" }, 409);
     if (error instanceof TooManyRequests) return c.json({ error: "Rate limit exceeded" }, 429);
     log("error", "request_error", { name: error.name });
+    recordFailure("http.rest");
     return c.json({ error: "Internal server error" }, 500);
   });
   const owner = async (c: Context) => {
