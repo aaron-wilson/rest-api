@@ -3,7 +3,7 @@
   "version": "1.0.0",
   "description": "TypeScript-first REST API built with Bun and Hono",
   "type": "module",
-  "main": "src/server.ts",
+  "main": "src/bootstrap.ts",
   "scripts": {
     "build": "bun build src/bootstrap.ts --outdir dist --target bun",
     "dev": "bun run --hot src/bootstrap.ts",
