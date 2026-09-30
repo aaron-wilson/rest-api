@@ -6,7 +6,7 @@ import { ZodError, type z } from "zod";
 import type { parseEnv } from "./config/env";
 import { ActivityNotFound, InvalidTripEdit, tripSchema } from "./domain/trip";
 import { createLogger } from "./logger";
-import { context } from "@opentelemetry/api";
+import { context, trace, SpanStatusCode } from "@opentelemetry/api";
 import { incomingContext, observed, recordFailure } from "./otel/operations";
 import { createTripService, TripNotFound } from "./service/trips";
 import { selectStore } from "./store/select";
@@ -136,29 +136,38 @@ export function createApp(
   app.use("*", async (c, next) => {
     return context.with(incomingContext(c.req.header("traceparent")), () =>
       observed("http.rest", async () => {
-        c.header("X-Content-Type-Options", "nosniff");
-        c.header("Referrer-Policy", "no-referrer");
-        c.header("Cache-Control", "no-store");
-        if (c.req.path !== "/health") {
-          const now = Date.now();
-          if (c.req.path === "/trips" || c.req.path.startsWith("/trips/")) {
-            const key = addressKey(c);
-            check(key, now);
-            try {
-              const principal = await auth.authenticate(c.req.header("authorization"));
-              charge(`principal:${principal.id}`, now);
-              owners.set(c.req.raw, principal.id);
-            } catch (error) {
-              if (error instanceof Unauthorized) charge(key, now);
-              throw error;
-            }
-          } else charge(addressKey(c), now);
+        try {
+          c.header("X-Content-Type-Options", "nosniff");
+          c.header("Referrer-Policy", "no-referrer");
+          c.header("Cache-Control", "no-store");
+          if (c.req.path !== "/health") {
+            const now = Date.now();
+            if (c.req.path === "/trips" || c.req.path.startsWith("/trips/")) {
+              const key = addressKey(c);
+              check(key, now);
+              try {
+                const principal = await auth.authenticate(c.req.header("authorization"));
+                charge(`principal:${principal.id}`, now);
+                owners.set(c.req.raw, principal.id);
+              } catch (error) {
+                if (error instanceof Unauthorized) charge(key, now);
+                throw error;
+              }
+            } else charge(addressKey(c), now);
+          }
+          await next();
+        } catch (error) {
+          if (!(error instanceof Error)) throw error;
+          c.res = handleError(error, c);
         }
-        await next();
+        if (c.res.status >= 500) {
+          trace.getActiveSpan()?.setStatus({ code: SpanStatusCode.ERROR });
+          recordFailure("http.rest");
+        }
       })
     );
   });
-  app.onError((error, c) => {
+  const handleError = (error: Error, c: Context) => {
     if (
       error instanceof BadRequest ||
       error instanceof InvalidCursor ||
@@ -171,9 +180,9 @@ export function createApp(
     if (error instanceof StoreConflict) return c.json({ error: "Version conflict" }, 409);
     if (error instanceof TooManyRequests) return c.json({ error: "Rate limit exceeded" }, 429);
     log("error", "request_error", { name: error.name });
-    recordFailure("http.rest");
     return c.json({ error: "Internal server error" }, 500);
-  });
+  };
+  app.onError(handleError);
   const owner = async (c: Context) => {
     const principal = owners.get(c.req.raw);
     if (!principal) throw new Unauthorized();
