@@ -16,11 +16,11 @@
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",
     "test:integration": "vitest run tests/foundation.test.ts",
-    "seed": "bun run scripts/seed.ts",
     "seed:once": "bun run scripts/seed-once.ts",
     "dynamo:init": "bun run scripts/init-dynamo.ts",
     "test:dynamo": "RUN_DYNAMO_CONTRACT=1 vitest run tests/dynamo-contract.test.ts",
     "spec:snapshot": "bun run scripts/openapi-snapshot.ts",
+    "spec:check": "bun --no-env-file run scripts/openapi-snapshot.ts --check",
     "infra:synth": "TSX_TSCONFIG_PATH=infra/tsconfig.json node --import ../graph-rest-react-stack/platform-cdk/node_modules/tsx/dist/loader.mjs infra/app.ts",
     "infra:typecheck": "../graph-rest-react-stack/platform-cdk/node_modules/.bin/tsc --project infra/tsconfig.json",
     "infra:test": "../graph-rest-react-stack/platform-cdk/node_modules/.bin/vitest run --config infra/vitest.config.ts"

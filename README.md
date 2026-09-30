@@ -82,10 +82,10 @@ bun run typecheck
 bun run lint
 bun --no-env-file --bun run test
 bun run build
-bun run spec:snapshot
+bun run spec:check
 ```
 
-`test:dynamo` needs initialized DynamoDB Local and its explicit endpoint/table settings. Infrastructure scripts use the sibling hub's installed platform toolchain.
+`spec:check` compares the generated contract without writing files; `spec:snapshot` deliberately updates it after schema changes. `test:dynamo` needs initialized DynamoDB Local and its explicit endpoint/table settings. Infrastructure scripts use the sibling hub's installed platform toolchain.
 
 ---
 
