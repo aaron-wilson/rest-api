@@ -17,6 +17,7 @@
     "typecheck": "tsc --noEmit",
     "test:integration": "vitest run tests/foundation.test.ts",
     "seed": "bun run scripts/seed.ts",
+    "seed:once": "bun run scripts/seed-once.ts",
     "dynamo:init": "bun run scripts/init-dynamo.ts",
     "test:dynamo": "RUN_DYNAMO_CONTRACT=1 vitest run tests/dynamo-contract.test.ts",
     "spec:snapshot": "bun run scripts/openapi-snapshot.ts"
