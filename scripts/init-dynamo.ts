@@ -1,4 +1,9 @@
-import { CreateTableCommand, DynamoDBClient, waitUntilTableExists } from "@aws-sdk/client-dynamodb";
+import {
+  CreateTableCommand,
+  DynamoDBClient,
+  ListTablesCommand,
+  waitUntilTableExists,
+} from "@aws-sdk/client-dynamodb";
 import { parseEnv } from "../src/config/env";
 
 const config = parseEnv(process.env);
@@ -9,6 +14,21 @@ const client = new DynamoDBClient({
   endpoint: config.dynamoEndpoint,
   credentials: { accessKeyId: "local", secretAccessKey: "local" },
 });
+// A started Compose container is not necessarily accepting DynamoDB requests yet.
+for (let attempt = 0; ; attempt++) {
+  try {
+    await client.send(new ListTablesCommand({ Limit: 1 }), {
+      abortSignal: AbortSignal.timeout(1000),
+    });
+    break;
+  } catch (error) {
+    if (attempt === 29) {
+      client.destroy();
+      throw new Error("Local DynamoDB did not become ready", { cause: error });
+    }
+    await Bun.sleep(1000);
+  }
+}
 try {
   await client.send(
     new CreateTableCommand({
