@@ -6,6 +6,8 @@ import { ZodError, type z } from "zod";
 import type { parseEnv } from "./config/env";
 import { ActivityNotFound, InvalidTripEdit, tripSchema } from "./domain/trip";
 import { createLogger } from "./logger";
+import { context } from "@opentelemetry/api";
+import { incomingContext, observed } from "./otel/operations";
 import { createTripService, TripNotFound } from "./service/trips";
 import { selectStore } from "./store/select";
 import { InvalidCursor, StoreConflict, type TripStore } from "./store/port";
@@ -128,29 +130,33 @@ export function createApp(
     cors({
       origin: config.corsOrigin,
       allowMethods: ["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
-      allowHeaders: ["Authorization", "Content-Type"],
+      allowHeaders: ["Authorization", "Content-Type", "traceparent"],
     })
   );
   app.use("*", async (c, next) => {
-    c.header("X-Content-Type-Options", "nosniff");
-    c.header("Referrer-Policy", "no-referrer");
-    c.header("Cache-Control", "no-store");
-    if (c.req.path !== "/health") {
-      const now = Date.now();
-      if (c.req.path === "/trips" || c.req.path.startsWith("/trips/")) {
-        const key = addressKey(c);
-        check(key, now);
-        try {
-          const principal = await auth.authenticate(c.req.header("authorization"));
-          charge(`principal:${principal.id}`, now);
-          owners.set(c.req.raw, principal.id);
-        } catch (error) {
-          if (error instanceof Unauthorized) charge(key, now);
-          throw error;
+    return context.with(incomingContext(c.req.header("traceparent")), () =>
+      observed("http.rest", async () => {
+        c.header("X-Content-Type-Options", "nosniff");
+        c.header("Referrer-Policy", "no-referrer");
+        c.header("Cache-Control", "no-store");
+        if (c.req.path !== "/health") {
+          const now = Date.now();
+          if (c.req.path === "/trips" || c.req.path.startsWith("/trips/")) {
+            const key = addressKey(c);
+            check(key, now);
+            try {
+              const principal = await auth.authenticate(c.req.header("authorization"));
+              charge(`principal:${principal.id}`, now);
+              owners.set(c.req.raw, principal.id);
+            } catch (error) {
+              if (error instanceof Unauthorized) charge(key, now);
+              throw error;
+            }
+          } else charge(addressKey(c), now);
         }
-      } else charge(addressKey(c), now);
-    }
-    await next();
+        await next();
+      })
+    );
   });
   app.onError((error, c) => {
     if (

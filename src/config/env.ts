@@ -26,6 +26,8 @@ const schema = z.object({
   COGNITO_USER_POOL_ID: z.string().min(1).optional(),
   COGNITO_CLIENT_ID: z.string().min(1).optional(),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10000).default(120),
+  TELEMETRY_MODE: z.enum(["off", "otlp"]).default("off"),
+  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
 });
 
 export function parseEnv(input: Record<string, string | undefined>) {
@@ -54,6 +56,8 @@ export function parseEnv(input: Record<string, string | undefined>) {
     (!result.data.COGNITO_USER_POOL_ID || !result.data.COGNITO_CLIENT_ID)
   )
     throw new Error("Invalid configuration: Cognito settings");
+  if (result.data.TELEMETRY_MODE === "otlp" && !result.data.OTEL_EXPORTER_OTLP_ENDPOINT)
+    throw new Error("Invalid configuration: OTEL_EXPORTER_OTLP_ENDPOINT");
   return Object.freeze({
     port: result.data.PORT,
     logLevel: result.data.LOG_LEVEL,
@@ -66,5 +70,7 @@ export function parseEnv(input: Record<string, string | undefined>) {
     cognitoUserPoolId: result.data.COGNITO_USER_POOL_ID,
     cognitoClientId: result.data.COGNITO_CLIENT_ID,
     rateLimitPerMinute: result.data.RATE_LIMIT_PER_MINUTE,
+    telemetryMode: result.data.TELEMETRY_MODE,
+    otlpEndpoint: result.data.OTEL_EXPORTER_OTLP_ENDPOINT,
   });
 }

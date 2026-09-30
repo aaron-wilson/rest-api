@@ -16,4 +16,4 @@ COPY --from=build --chown=bun:bun /app/package.json ./package.json
 USER bun
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=3s CMD bun -e "fetch('http://127.0.0.1:3000/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"
-CMD ["bun", "run", "dist/server.js"]
+CMD ["bun", "run", "dist/bootstrap.js"]
