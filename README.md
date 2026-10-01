@@ -20,7 +20,7 @@
 
 ## Overview
 
-The REST layer owns trip rules and persistence: trips, days, activities, preferences, and share links. It demonstrates validated HTTP boundaries, interchangeable stores, and conditional writes.
+The REST layer owns trip rules and persistence: trips, days, activities, preferences, and share links. It provides validated HTTP boundaries, interchangeable stores, and conditional writes.
 
 - Hono routes with Zod validation and generated OpenAPI
 - Memory defaults and an optional DynamoDB DocumentClient adapter
