@@ -361,9 +361,20 @@ export function createApp(
     return shared ? c.json(shared) : c.json({ error: "Not found" }, 404);
   });
   app.get("/openapi.json", (c) => c.json(openApiDocument));
+  // Demo mode accepts one fixed public token, so the reference enters it. Live tokens are
+  // never preset; an entered token is kept across reloads in the browser only.
+  const docsOptions = JSON.stringify({
+    url: "/openapi.json",
+    dom_id: "#swagger-ui",
+    deepLinking: true,
+    displayRequestDuration: true,
+    persistAuthorization: true,
+    tryItOutEnabled: true,
+  });
+  const docsReady = config.appMode === "demo" ? "ui.preauthorizeApiKey('bearerAuth','demo');" : "";
   app.get("/docs", (c) =>
     c.html(
-      `<!doctype html><html><head><title>Wander REST API</title><link rel="stylesheet" href="/docs/swagger-ui.css"></head><body><div id="swagger-ui"></div><script src="/docs/swagger-ui-bundle.js"></script><script>SwaggerUIBundle({url:'/openapi.json',dom_id:'#swagger-ui'});</script></body></html>`
+      `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Wander REST API</title><link rel="stylesheet" href="/docs/swagger-ui.css"></head><body><div id="swagger-ui"></div><script src="/docs/swagger-ui-bundle.js"></script><script>const ui=SwaggerUIBundle({...${docsOptions},onComplete(){${docsReady}}});</script></body></html>`
     )
   );
   app.get("/docs/swagger-ui.css", (c) =>
@@ -374,22 +385,14 @@ export function createApp(
       "content-type": "application/javascript",
     })
   );
-  app.get("/hello", (c) =>
-    c.json({
-      message: "Hello from REST API!",
-      timestamp: new Date().toISOString(),
-      framework: "Hono",
-      runtime: "Bun",
-    })
-  );
   app.get("/health", (c) =>
     c.json({ status: "healthy", uptime: process.uptime(), timestamp: new Date().toISOString() })
   );
   app.get("/", (c) =>
     c.json({
-      message: "Welcome to the REST API",
-      version: "1.0.0",
-      endpoints: ["/hello", "/health", "/docs"],
+      service: "wander-rest",
+      version: openApiDocument.info.version,
+      links: { reference: "/docs", contract: "/openapi.json", health: "/health" },
     })
   );
   return app;

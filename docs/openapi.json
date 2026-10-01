@@ -1,14 +1,37 @@
 {
   "openapi": "3.0.3",
-  "info": { "title": "Wander REST API", "version": "1.0.0" },
+  "info": {
+    "title": "Wander REST API",
+    "version": "1.0.0",
+    "description": "Stores trips for their owners. Every write carries the trip `version` it was based on and\nfails with `409` when the stored trip has moved on.\n\n## Authorization\n\nRoutes marked with a lock require `Authorization: Bearer <token>` and answer `401` without\nit. Select **Authorize** and enter the token alone, without the `Bearer` prefix.\n\n- `APP_MODE=demo`: the token is `demo`. This page enters it for you.\n- `APP_MODE=live`: use a Cognito access token issued to the configured app client.\n\nRoutes without a lock are public: the shared-trip projection and the health check."
+  },
   "servers": [{ "url": "/" }],
+  "tags": [
+    { "name": "Trips", "description": "Owned trips. Bearer token required." },
+    {
+      "name": "Itinerary",
+      "description": "Days and activities of an owned trip. Bearer token required."
+    },
+    {
+      "name": "Sharing",
+      "description": "Create or revoke a share link; read a shared trip without a token."
+    },
+    { "name": "System", "description": "Service status. Public." }
+  ],
   "components": {
-    "securitySchemes": { "bearerAuth": { "type": "http", "scheme": "bearer" } }
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "description": "The token alone, without the Bearer prefix. In demo mode it is `demo`."
+      }
+    }
   },
   "paths": {
     "/trips": {
       "get": {
         "summary": "List owned trips",
+        "tags": ["Trips"],
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
@@ -139,7 +162,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -155,6 +178,7 @@
       },
       "post": {
         "summary": "Create trip",
+        "tags": ["Trips"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -333,7 +357,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -343,6 +367,7 @@
     "/trips/batch": {
       "post": {
         "summary": "Batch read owned trips",
+        "tags": ["Trips"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -491,7 +516,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -501,6 +526,7 @@
     "/trips/{id}": {
       "get": {
         "summary": "Read owned trip",
+        "tags": ["Trips"],
         "security": [{ "bearerAuth": [] }],
         "responses": {
           "200": {
@@ -608,7 +634,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -624,6 +650,7 @@
       },
       "patch": {
         "summary": "Update trip",
+        "tags": ["Trips"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -813,7 +840,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -829,6 +856,7 @@
       },
       "delete": {
         "summary": "Delete trip",
+        "tags": ["Trips"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -852,7 +880,7 @@
         "responses": {
           "204": { "description": "Deleted" },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -870,6 +898,7 @@
     "/trips/{id}/pin": {
       "post": {
         "summary": "Pin activity",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -998,7 +1027,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1016,6 +1045,7 @@
     "/trips/{id}/swap": {
       "post": {
         "summary": "Swap activity",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1157,7 +1187,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1175,6 +1205,7 @@
     "/trips/{id}/preferences": {
       "put": {
         "summary": "Update preferences",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1321,7 +1352,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1339,6 +1370,7 @@
     "/trips/{id}/days": {
       "post": {
         "summary": "Add day",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1492,7 +1524,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1510,6 +1542,7 @@
     "/trips/{id}/days/{dayId}": {
       "patch": {
         "summary": "Update day",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1661,7 +1694,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1683,6 +1716,7 @@
       },
       "delete": {
         "summary": "Delete day",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1809,7 +1843,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1833,6 +1867,7 @@
     "/trips/{id}/days/{dayId}/activities": {
       "post": {
         "summary": "Add activity",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -1973,7 +2008,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -1997,6 +2032,7 @@
     "/trips/{id}/activities/{activityId}": {
       "patch": {
         "summary": "Update activity",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -2135,7 +2171,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -2157,6 +2193,7 @@
       },
       "delete": {
         "summary": "Delete activity",
+        "tags": ["Itinerary"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -2283,7 +2320,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -2307,6 +2344,7 @@
     "/trips/{id}/share": {
       "post": {
         "summary": "Create share link",
+        "tags": ["Sharing"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -2346,7 +2384,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -2362,6 +2400,7 @@
       },
       "delete": {
         "summary": "Revoke share link",
+        "tags": ["Sharing"],
         "security": [{ "bearerAuth": [] }],
         "requestBody": {
           "required": true,
@@ -2488,7 +2527,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
+          "401": { "description": "Missing or invalid bearer token" },
           "404": { "description": "Not found" },
           "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
@@ -2506,6 +2545,7 @@
     "/shared/{ownerId}/{tripId}/{token}": {
       "get": {
         "summary": "Read public share",
+        "tags": ["Sharing"],
         "security": [],
         "responses": {
           "200": {
@@ -2556,9 +2596,7 @@
             }
           },
           "400": { "description": "Invalid request" },
-          "401": { "description": "Unauthorized" },
           "404": { "description": "Not found" },
-          "409": { "description": "Version conflict" },
           "429": { "description": "Rate limit exceeded" }
         },
         "parameters": [
@@ -2581,6 +2619,32 @@
             "schema": { "type": "string" }
           }
         ]
+      }
+    },
+    "/health": {
+      "get": {
+        "summary": "Service status",
+        "tags": ["System"],
+        "security": [],
+        "responses": {
+          "200": {
+            "description": "The service is running",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "status": { "type": "string", "enum": ["healthy"] },
+                    "uptime": { "type": "number" },
+                    "timestamp": { "type": "string", "format": "date-time" }
+                  },
+                  "required": ["status", "uptime", "timestamp"],
+                  "additionalProperties": false
+                }
+              }
+            }
+          }
+        }
       }
     }
   }

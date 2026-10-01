@@ -4,6 +4,7 @@ import { serve } from "@hono/node-server";
 import type { Server } from "node:http";
 import { readFileSync } from "node:fs";
 import { createApp } from "../src/app";
+import { openApiDocument } from "../src/openapi";
 import { parseEnv } from "../src/config/env";
 import { demoTrips } from "../src/store/fixtures";
 import { createMemoryStore } from "../src/store/memory";
@@ -206,7 +207,7 @@ it("uses the Bun request address and preserves active buckets when full", async 
     2
   );
   const fetchAt = (address: string) =>
-    app.fetch(new Request("http://localhost/hello"), {
+    app.fetch(new Request("http://localhost/"), {
       server: { requestIP: () => ({ address }) },
     });
   expect((await fetchAt("a")).status).toBe(200);
@@ -329,5 +330,40 @@ it("serves the generated OpenAPI snapshot and local Swagger assets", async () =>
   const docs = await request(api).get("/docs");
   expect(docs.status).toBe(200);
   expect(docs.text).toContain("swagger-ui-bundle.js");
+  expect(docs.text).toContain('"persistAuthorization":true');
+  expect(docs.text).toContain("preauthorizeApiKey('bearerAuth','demo')");
   expect((await request(api).get("/docs/swagger-ui.css")).status).toBe(200);
+  expect((await request(api).get("/")).body.links.reference).toBe("/docs");
+  expect((await request(api).get("/hello")).status).toBe(404);
+});
+
+it("documents which routes need a token and never presets a live token", async () => {
+  const { paths, info } = openApiDocument;
+  expect(info.description).toContain("Authorize");
+  const operations = Object.entries(paths).flatMap(([path, methods]) =>
+    Object.entries(methods as Record<string, { security: unknown[]; responses: object }>).map(
+      ([method, operation]) => ({ path, method, ...operation })
+    )
+  );
+  const open = operations.filter((operation) => operation.security.length === 0);
+  expect(open.map((operation) => operation.path).sort()).toEqual([
+    "/health",
+    "/shared/{ownerId}/{tripId}/{token}",
+  ]);
+  for (const operation of operations)
+    expect("401" in operation.responses, `${operation.method} ${operation.path}`).toBe(
+      operation.security.length > 0
+    );
+  const live = createApp(
+    parseEnv({
+      APP_MODE: "live",
+      COGNITO_USER_POOL_ID: "us-east-1_example",
+      COGNITO_CLIENT_ID: "client",
+    }),
+    createMemoryStore(),
+    { authenticate: async () => ({ id: "owner" }) }
+  );
+  const docs = await (await live.request("/docs")).text();
+  expect(docs).not.toContain("preauthorizeApiKey");
+  expect((await live.request("/health")).status).toBe(200);
 });
