@@ -1,9 +1,10 @@
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import request from "supertest";
 import { serve } from "@hono/node-server";
 import type { Server } from "node:http";
 import { createApp } from "../src/app";
-import { parseEnv } from "../src/config/env";
+import { parseEnv, summarizeConfig } from "../src/config/env";
+import { serverOptions } from "../src/server";
 
 const config = parseEnv({});
 let server: Server | undefined;
@@ -17,6 +18,56 @@ describe("REST foundation", () => {
     expect(Object.isFrozen(config)).toBe(true);
     expect(() => parseEnv({ PORT: "secret" })).toThrow("PORT");
     expect(() => parseEnv({ CORS_ORIGIN: "secret" })).toThrow("CORS_ORIGIN");
+  });
+  it("validates selected storage and telemetry without echoing values", () => {
+    const rejected: [Record<string, string>, string][] = [
+      [{ PROVIDER_STORE: "dynamo" }, "DYNAMO_TABLE"],
+      [{ PROVIDER_STORE: "dynamo", DYNAMO_TABLE: "bad table PRIVATE_SENTINEL" }, "DYNAMO_TABLE"],
+      [
+        { DYNAMO_ENDPOINT: "http://PRIVATE_SENTINEL.example:8000", DYNAMO_TABLE: "wander-local" },
+        "DYNAMO_ENDPOINT",
+      ],
+      [{ TELEMETRY_MODE: "otlp" }, "OTEL_EXPORTER_OTLP_ENDPOINT"],
+      [
+        { TELEMETRY_MODE: "otlp", OTEL_EXPORTER_OTLP_ENDPOINT: "http://u:PRIVATE_SENTINEL@c:4318" },
+        "OTEL_EXPORTER_OTLP_ENDPOINT",
+      ],
+      [{ APP_MODE: "live", COGNITO_CLIENT_ID: "PRIVATE_SENTINEL" }, "Cognito settings"],
+    ];
+    for (const [input, key] of rejected) {
+      let message = "";
+      try {
+        parseEnv(input);
+      } catch (error) {
+        message = error instanceof Error ? error.message : "";
+      }
+      expect(message).toContain(key);
+      expect(message).not.toContain("PRIVATE_SENTINEL");
+    }
+    // Blank optional settings stay valid while their adapter is not selected.
+    expect(
+      parseEnv({ DYNAMO_TABLE: "", DYNAMO_ENDPOINT: "", OTEL_EXPORTER_OTLP_ENDPOINT: "" })
+        .storeProvider
+    ).toBe("memory");
+  });
+  it("summarizes selections without tables, endpoints or identifiers", () => {
+    expect(summarizeConfig(config)).toEqual({ auth: "demo", store: "memory", telemetry: "off" });
+    const selected = parseEnv({
+      PROVIDER_STORE: "dynamo",
+      DYNAMO_TABLE: "private-table",
+      DYNAMO_ENDPOINT: "http://dynamodb:8000",
+      TELEMETRY_MODE: "otlp",
+      OTEL_EXPORTER_OTLP_ENDPOINT: "http://collector:4318",
+    });
+    const summary = summarizeConfig(selected);
+    expect(summary).toEqual({ auth: "demo", store: "dynamo", telemetry: "otlp" });
+    const write = vi.spyOn(process.stderr, "write").mockImplementation(() => true);
+    serverOptions(selected);
+    const lines = write.mock.calls.join(" ");
+    write.mockRestore();
+    expect(lines).toContain('"event":"config_summary"');
+    expect(lines).toContain('"store":"dynamo"');
+    expect(lines).not.toMatch(/private-table|collector|dynamodb:8000/);
   });
   it("serves health over HTTP", async () => {
     server = await new Promise<Server>((resolve) => {

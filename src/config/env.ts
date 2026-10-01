@@ -1,5 +1,18 @@
 import { z } from "zod";
 
+/** A collector origin on a private network; never carries credentials. */
+const plainUrl = z
+  .string()
+  .url()
+  .refine((value) => {
+    try {
+      const url = new URL(value);
+      return ["http:", "https:"].includes(url.protocol) && !url.username && !url.password;
+    } catch {
+      return false;
+    }
+  }, "must be an HTTP(S) URL without credentials");
+
 const schema = z.object({
   PORT: z.coerce.number().int().min(1).max(65535).default(3000),
   LOG_LEVEL: z.enum(["debug", "info", "warn", "error"]).default("info"),
@@ -19,7 +32,10 @@ const schema = z.object({
     )
     .default("http://localhost:3001"),
   PROVIDER_STORE: z.enum(["memory", "dynamo"]).default("memory"),
-  DYNAMO_TABLE: z.string().min(3).optional(),
+  DYNAMO_TABLE: z
+    .string()
+    .regex(/^[A-Za-z0-9_.-]{3,255}$/)
+    .optional(),
   AWS_REGION: z.string().min(1).default("us-east-1"),
   DYNAMO_ENDPOINT: z.string().url().optional(),
   APP_MODE: z.enum(["demo", "live"]).default("demo"),
@@ -27,7 +43,7 @@ const schema = z.object({
   COGNITO_CLIENT_ID: z.string().min(1).optional(),
   RATE_LIMIT_PER_MINUTE: z.coerce.number().int().min(1).max(10000).default(120),
   TELEMETRY_MODE: z.enum(["off", "otlp"]).default("off"),
-  OTEL_EXPORTER_OTLP_ENDPOINT: z.string().url().optional(),
+  OTEL_EXPORTER_OTLP_ENDPOINT: plainUrl.optional(),
 });
 
 export function parseEnv(input: Record<string, string | undefined>) {
@@ -73,4 +89,17 @@ export function parseEnv(input: Record<string, string | undefined>) {
     telemetryMode: result.data.TELEMETRY_MODE,
     otlpEndpoint: result.data.OTEL_EXPORTER_OTLP_ENDPOINT,
   });
+}
+export type RestConfig = ReturnType<typeof parseEnv>;
+
+/**
+ * The selections this process runs with, safe to log: modes and adapter names only. It never
+ * includes a table, endpoint or identifier.
+ */
+export function summarizeConfig(config: RestConfig) {
+  return {
+    auth: config.appMode,
+    store: config.storeProvider,
+    telemetry: config.telemetryMode,
+  };
 }

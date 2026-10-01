@@ -1,9 +1,10 @@
 import { createApp } from "./app";
-import type { parseEnv } from "./config/env";
+import { summarizeConfig, type RestConfig } from "./config/env";
 import { createLogger } from "./logger";
 
-export function serverOptions(config: ReturnType<typeof parseEnv>) {
+export function serverOptions(config: RestConfig) {
   const log = createLogger(config.logLevel);
+  log("info", "config_summary", summarizeConfig(config));
   log("info", "server_start", { port: config.port });
   const app = createApp(config);
   return {
