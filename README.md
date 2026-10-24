@@ -53,7 +53,7 @@ bun install --frozen-lockfile
 bun run dev
 ```
 
-Health: http://localhost:3000/health. Swagger UI: `/docs`; contract: `/openapi.json`. Private demo requests use `Authorization: Bearer demo`. Docker is optional for source development; the [hub](https://github.com/aaron-wilson/graph-rest-react-stack) runs the full container alternative.
+Health: http://localhost:3000/health. Swagger UI: `/docs`; contract: `/openapi.json`. Private demo requests use `Authorization: Bearer demo`. Docker is optional for source development.
 
 ---
 
@@ -85,16 +85,16 @@ bun run build
 bun run spec:check
 ```
 
-`spec:check` compares the generated contract without writing files; `spec:snapshot` deliberately updates it after schema changes. `test:dynamo` needs initialized DynamoDB Local and its explicit endpoint/table settings. Infrastructure scripts use the sibling hub's installed platform toolchain.
+`spec:check` compares the generated contract without writing files; `spec:snapshot` deliberately updates it after schema changes. `test:dynamo` needs initialized DynamoDB Local and its explicit endpoint/table settings. Infrastructure scripts use the shared platform CDK toolchain.
 
 ---
 
 ## CI/CD
 
-Disabled GitHub Actions templates cover checks and manual deployment. `infra/` defines private Fargate tasks, DynamoDB IAM, health checks and a CPU alarm; shared resources live in the hub's CDK app. Templates and offline synth are implemented; Docker/live AWS acceptance remains pending.
+Disabled GitHub Actions templates cover checks and manual deployment. `infra/` defines private Fargate tasks, DynamoDB IAM, health checks and a CPU alarm; shared resources live in the platform CDK app. Templates and offline synth are implemented; Docker/live AWS acceptance remains pending.
 
 ---
 
 ## Observability
 
-OpenTelemetry exports are off by default. Set `TELEMETRY_MODE=otlp` and `OTEL_EXPORTER_OTLP_ENDPOINT` for traces, metrics and redacted logs. Optional New Relic forwarding is handled by the hub collector.
+OpenTelemetry exports are off by default. Set `TELEMETRY_MODE=otlp` and `OTEL_EXPORTER_OTLP_ENDPOINT` for traces, metrics and redacted logs. Optional New Relic forwarding is handled by the platform collector.
